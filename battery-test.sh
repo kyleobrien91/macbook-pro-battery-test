@@ -18,8 +18,44 @@ if [ $AC -eq 1 ]; then
   printf "\033[0;31mPlease unplug power before starting the test.\033[0m\n"; exit 1;
 fi
 
+# Default Vagrant provider
+VAGRANT_PROVIDER="virtualbox"
+
+# Usage message function
+usage() {
+  echo "Usage: $0 [-p provider] [-h]"
+  echo "  -p provider: Specify Vagrant provider (virtualbox, parallels, utm). Default: virtualbox"
+  echo "  -h: Display this help message."
+  exit 1
+}
+
+# Parse command-line options
+while getopts ":p:h" opt; do
+  case ${opt} in
+    p )
+      VAGRANT_PROVIDER=$OPTARG
+      if [[ "$VAGRANT_PROVIDER" != "virtualbox" && "$VAGRANT_PROVIDER" != "parallels" && "$VAGRANT_PROVIDER" != "utm" ]]; then
+        echo "Error: Invalid provider '$VAGRANT_PROVIDER'. Supported providers are 'virtualbox', 'parallels', 'utm'."
+        usage
+      fi
+      ;;
+    h )
+      usage
+      ;;
+    \? )
+      echo "Error: Invalid option: -$OPTARG" 1>&2
+      usage
+      ;;
+    : )
+      echo "Error: Option -$OPTARG requires an argument." 1>&2
+      usage
+      ;;
+  esac
+done
+shift $((OPTIND -1))
+
 # Friendly reminder.
-printf "Press [Ctrl+C] to stop the battery test...\n"
+printf "Press [Ctrl+C] to stop the battery test (using provider: %s)...\n" "$VAGRANT_PROVIDER"
 
 # Get the current time.
 DATE="$(date +"%Y-%m-%d_%H.%M.%S")"
@@ -63,13 +99,13 @@ do
 
   # Build Drupal VM.
   cd drupal-vm-master
-  vagrant up
+  vagrant up --provider="$VAGRANT_PROVIDER"
 
   sleep 10
 
   # Destroy Drupal VM instance.
   rm -rf drupal
-  vagrant destroy -f
+  vagrant destroy -f --provider="$VAGRANT_PROVIDER"
   cd ..
 
   TIMES_RUN=$((TIMES_RUN + 1))
